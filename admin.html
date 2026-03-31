@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Admin Dashboard</title>
+
+<script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+
+<style>
+body {
+  font-family: Arial;
+  background: #111;
+  color: white;
+  padding: 20px;
+}
+
+input, button {
+  padding: 10px;
+  margin: 5px;
+}
+
+.card {
+  background: #222;
+  padding: 10px;
+  margin: 10px 0;
+}
+</style>
+</head>
+
+<body>
+
+<h1>📊 Admin Dashboard</h1>
+
+<h2>Add Keyword</h2>
+<input id="keywordInput" placeholder="Enter keyword">
+<button onclick="addKeyword()">Add</button>
+
+<h2>Keywords</h2>
+<div id="keywords"></div>
+
+<h2>Live Results</h2>
+<div id="results"></div>
+
+<script>
+// 🔥 FIREBASE CONFIG (GIỐNG FILE USER)
+const firebaseConfig = {
+  apiKey: "YOUR_KEY",
+  authDomain: "YOUR_PROJECT.firebaseapp.com",
+  databaseURL: "https://YOUR_PROJECT.firebaseio.com",
+  projectId: "YOUR_PROJECT"
+};
+
+firebase.initializeApp(firebaseConfig);
+const db = firebase.database();
+
+function addKeyword() {
+  const value = document.getElementById("keywordInput").value;
+  if (!value) return;
+
+  db.ref("keywords").push(value);
+  document.getElementById("keywordInput").value = "";
+}
+
+db.ref("keywords").on("value", snapshot => {
+  const container = document.getElementById("keywords");
+  container.innerHTML = "";
+
+  snapshot.forEach(child => {
+    const div = document.createElement("div");
+    div.className = "card";
+    div.innerText = child.val();
+    container.appendChild(div);
+  });
+});
+
+db.ref("results").on("value", snapshot => {
+  const container = document.getElementById("results");
+  container.innerHTML = "";
+
+  snapshot.forEach(child => {
+    const data = child.val();
+    const div = document.createElement("div");
+    div.className = "card";
+    div.innerText = data.user + " → " + data.keyword;
+    container.prepend(div);
+  });
+});
+</script>
+
+</body>
+</html>
