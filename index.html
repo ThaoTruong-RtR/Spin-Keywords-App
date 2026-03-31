@@ -1,76 +1,48 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
 <meta charset="UTF-8">
-<title>Story Spin</title>
+<title>Spin Game</title>
 
-<!-- Firebase -->
 <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
 <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
 
-<!-- Chart -->
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-
 <style>
 body {
-  margin: 0;
-  font-family: 'Segoe UI', sans-serif;
-  background: linear-gradient(135deg, #00c853, #b2ff59);
+  font-family: Arial;
   text-align: center;
+  background: linear-gradient(135deg, #00c853, #b2ff59);
   color: white;
 }
 
 .container {
-  max-width: 400px;
-  margin: auto;
-  padding: 20px;
+  margin-top: 50px;
 }
 
-h1 {
-  margin-bottom: 10px;
-}
-
-.wheel-container {
-  position: relative;
-  margin: 20px auto;
-  width: 320px;
-  height: 320px;
-}
-
-#wheel {
-  width: 100%;
-  height: 100%;
-  border-radius: 50%;
-  border: 8px solid white;
-  transition: transform 4s cubic-bezier(.17,.67,.83,.67);
-}
-
-.pointer {
-  position: absolute;
-  top: -10px;
-  left: 50%;
-  transform: translateX(-50%);
-  font-size: 30px;
+input, button {
+  padding: 12px;
+  margin: 10px;
+  font-size: 16px;
+  border-radius: 8px;
+  border: none;
 }
 
 button {
-  margin-top: 15px;
-  padding: 15px 30px;
-  font-size: 18px;
-  border-radius: 12px;
-  border: none;
   background: #ffea00;
-  color: black;
   cursor: pointer;
 }
 
-#result {
-  font-size: 28px;
-  margin: 20px;
-  font-weight: bold;
+#wheel {
+  width: 250px;
+  height: 250px;
+  border: 6px solid white;
+  border-radius: 50%;
+  margin: 20px auto;
+  transition: transform 4s ease-out;
 }
 
-canvas {
+#result {
+  font-size: 24px;
   margin-top: 20px;
 }
 </style>
@@ -79,28 +51,25 @@ canvas {
 <body>
 
 <div class="container">
-<h1>🎡 Story Spin</h1>
 
-<div class="wheel-container">
-  <div class="pointer">▼</div>
-  <canvas id="wheel" width="320" height="320"></canvas>
+<h1>🎡 Spin Your Story</h1>
+
+<div id="login">
+  <input id="username" placeholder="Enter your name">
+  <button onclick="start()">Start</button>
 </div>
 
-<button onclick="spin()">SPIN</button>
+<div id="game" style="display:none;">
+  <h2 id="welcome"></h2>
+  <div id="wheel"></div>
+  <button onclick="spin()">SPIN</button>
+  <div id="result"></div>
+</div>
 
-<div id="result">---</div>
-
-<canvas id="chart"></canvas>
 </div>
 
 <script>
-const keywords = [
-  "Boss","Meeting","Awkward",
-  "Deadline","Surprise","Mistake",
-  "Customer","Funny","Problem"
-];
-
-// 🔥 FIREBASE CONFIG (REPLACE)
+// 🔥 FIREBASE CONFIG (BẠN SẼ THAY)
 const firebaseConfig = {
   apiKey: "YOUR_KEY",
   authDomain: "YOUR_PROJECT.firebaseapp.com",
@@ -111,83 +80,50 @@ const firebaseConfig = {
 firebase.initializeApp(firebaseConfig);
 const db = firebase.database();
 
-// 🎡 DRAW WHEEL
-const canvas = document.getElementById("wheel");
-const ctx = canvas.getContext("2d");
+let username = "";
+let keywords = [];
 
-const colors = ["#ff5252","#ff9800","#ffeb3b","#4caf50","#2196f3","#9c27b0"];
-
-function drawWheel() {
-  const angle = 2 * Math.PI / keywords.length;
-
-  keywords.forEach((k, i) => {
-    ctx.beginPath();
-    ctx.moveTo(160,160);
-    ctx.arc(160,160,160, i*angle, (i+1)*angle);
-    ctx.fillStyle = colors[i % colors.length];
-    ctx.fill();
-
-    ctx.save();
-    ctx.translate(160,160);
-    ctx.rotate(i*angle + angle/2);
-    ctx.fillStyle = "white";
-    ctx.font = "14px Arial";
-    ctx.fillText(k, 50, 5);
-    ctx.restore();
+// Load keywords realtime
+db.ref("keywords").on("value", snapshot => {
+  keywords = [];
+  snapshot.forEach(child => {
+    keywords.push(child.val());
   });
-}
-drawWheel();
+});
 
-// 🎡 SPIN
+function start() {
+  username = document.getElementById("username").value;
+  if (!username) return alert("Please enter your name");
+
+  document.getElementById("login").style.display = "none";
+  document.getElementById("game").style.display = "block";
+  document.getElementById("welcome").innerText = "Hi " + username;
+}
+
 let rotation = 0;
 
 function spin() {
-  const randomIndex = Math.floor(Math.random() * keywords.length);
-  const angle = 360 / keywords.length;
-  const extraSpin = 3600;
+  if (keywords.length === 0) {
+    alert("No keywords yet");
+    return;
+  }
 
-  rotation += extraSpin + (randomIndex * angle);
+  const index = Math.floor(Math.random() * keywords.length);
+  const result = keywords[index];
 
-  canvas.style.transform = `rotate(${rotation}deg)`;
+  rotation += 3600 + index * (360 / keywords.length);
+  document.getElementById("wheel").style.transform = `rotate(${rotation}deg)`;
 
   setTimeout(() => {
-    const result = keywords[randomIndex];
     document.getElementById("result").innerText = "👉 " + result;
 
     db.ref("results").push({
+      user: username,
       keyword: result,
       time: new Date().toISOString()
     });
-
   }, 4000);
 }
-
-// 📊 CHART
-const chartCtx = document.getElementById("chart").getContext("2d");
-
-let chart = new Chart(chartCtx, {
-  type: "bar",
-  data: {
-    labels: keywords,
-    datasets: [{
-      label: "Results",
-      data: new Array(keywords.length).fill(0)
-    }]
-  }
-});
-
-db.ref("results").on("value", snapshot => {
-  const counts = {};
-  keywords.forEach(k => counts[k] = 0);
-
-  snapshot.forEach(child => {
-    const k = child.val().keyword;
-    counts[k]++;
-  });
-
-  chart.data.datasets[0].data = keywords.map(k => counts[k]);
-  chart.update();
-});
 </script>
 
 </body>
